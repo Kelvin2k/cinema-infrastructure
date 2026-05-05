@@ -1,0 +1,50 @@
+- name: Install VPS
+  hosts: list_host
+  become: true
+  vars_files:
+    - secrets.yml
+  tasks:
+    - name: setup docker
+      apt:
+        name: docker.io
+        state: present
+
+    - name: setup docker-compose
+      shell: curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+      args:
+        creates: /usr/local/bin/docker-compose
+
+    - name: Grant permissive execution to docker-compose
+      file:
+        path: /usr/local/bin/docker-compose
+        mode: '0700'
+
+    - name: clone github repo
+      git:
+        repo: 'https://github.com/Kelvin2k/MovieTheater_Project.git'
+        dest: /root/MovieTheater_Project
+        version: main
+        update: yes
+
+    - name: Generate .env file in project folder from template
+      template:
+        src: .env_project.j2
+        dest: /root/MovieTheater_Project/.env
+    
+    - name: Generate .env file in backend folder from template
+      template:
+        src: .env_backend.j2
+        dest: /root/MovieTheater_Project/Cinema-Project-Backend/.env
+
+    - name: Generate .env file in frontend folder from template
+      template:
+        src: .env_frontend.j2
+        dest: /root/MovieTheater_Project/Cinema-Project-FrontEnd/.env
+    
+    - name: Deploy Project
+      shell: |
+        docker-compose down
+        docker-compose build
+        docker-compose up -d
+      args:
+        chdir: /root/MovieTheater_Project

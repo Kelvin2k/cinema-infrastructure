@@ -1,0 +1,7 @@
+ssh-key-do
+*.tfstate
+*.tfstate.backup
+*.tfvars
+.terraform/
+hosts.ini
+.vault_pass

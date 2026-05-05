@@ -1,0 +1,68 @@
+variable "do_token" {
+  description = "This is the token allow terraform access into your Digital Ocean account"
+}
+
+variable "ssh_key" {
+  description = "This is SSH key allow terraform access into your droplets"
+}
+
+terraform {
+  // create bucket to store infrastructure of vps
+  backend "s3" {
+    endpoints = {
+      s3 = "https://syd1.digitaloceanspaces.com"
+    }
+    region                      = "us-east-1" 
+    bucket                      = "movie-project-tfstate" 
+    key                         = "terraform.tfstate" 
+    skip_credentials_validation = true
+    skip_requesting_account_id  = true
+    skip_metadata_api_check     = true
+    skip_region_validation      = true
+    skip_s3_checksum            = true
+  }
+
+  required_providers {
+    digitalocean = {
+      source  = "digitalocean/digitalocean"
+      version = "2.84.0"
+    }
+    local = {
+      source  = "hashicorp/local"
+      version = "2.5.1"
+    }
+  }
+}
+
+provider "digitalocean" {
+  token = var.do_token
+}
+
+# Create a new Web Droplet in the sydney region
+resource "digitalocean_droplet" "web" {
+  image   = "ubuntu-24-04-x64"
+  name    = "movie-project-vps"
+  region  = "syd1"
+  size    = "s-2vcpu-2gb"
+  ssh_keys = [var.ssh_key]
+}
+
+resource "local_file" "ansible_inventory" {
+  filename = "../ansible/hosts.ini"
+  content  = <<-EOT
+    [list_host]
+    ${digitalocean_droplet.web.ipv4_address}
+
+    [list_host:vars]
+    ansible_user=root
+    ansible_private_key_file=./ssh-key-do
+    REACT_APP_API_URL=http://${digitalocean_droplet.web.ipv4_address}:8088/
+    VPS_IP=http://${digitalocean_droplet.web.ipv4_address}:8088/
+  EOT
+}
+
+output "output_name" {
+  value = {
+    ipVps: digitalocean_droplet.web.ipv4_address
+  }
+}
