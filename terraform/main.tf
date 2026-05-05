@@ -11,7 +11,6 @@ variable "github_access_token" {
 }
 
 terraform {
-  // create bucket to store infrastructure of vps
   backend "s3" {
     endpoints = {
       s3 = "https://syd1.digitaloceanspaces.com"
@@ -31,6 +30,10 @@ terraform {
       source  = "digitalocean/digitalocean"
       version = "2.84.0"
     }
+    github = {
+      source  = "integrations/github"
+      version = "6.12.1"
+    }
     local = {
       source  = "hashicorp/local"
       version = "2.5.1"
@@ -42,16 +45,19 @@ provider "digitalocean" {
   token = var.do_token
 }
 
-# Create a new Web Droplet in the sydney region
+provider "github" {
+  token = var.github_access_token
+  owner = "Kelvin2k"
+}
+
 resource "digitalocean_droplet" "web" {
-  image   = "ubuntu-24-04-x64"
-  name    = "movie-project-vps"
-  region  = "syd1"
-  size    = "s-2vcpu-2gb"
+  image    = "ubuntu-24-04-x64"
+  name     = "movie-project-vps"
+  region   = "syd1"
+  size     = "s-2vcpu-2gb"
   ssh_keys = [var.ssh_key]
 }
 
-// automatic configuration on hosts.ini
 resource "local_file" "ansible_inventory" {
   filename = "../ansible/hosts.ini"
   content  = <<-EOT
@@ -64,11 +70,6 @@ resource "local_file" "ansible_inventory" {
     REACT_APP_API_URL=https://api.updatestudentmonash.dev/
     VPS_IP=${digitalocean_droplet.web.ipv4_address}
   EOT
-}
-
-provider "github" {
-  token = var.github_access_token
-  owner = "Kelvin2k"
 }
 
 resource "github_actions_variable" "vps_host" {
