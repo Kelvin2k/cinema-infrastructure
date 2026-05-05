@@ -67,7 +67,7 @@ resource "local_file" "ansible_inventory" {
     [list_host:vars]
     ansible_user=root
     ansible_private_key_file=./ssh-key-do
-    REACT_APP_API_URL=https://api.updatestudentmonash.dev/
+    REACT_APP_API_URL=${digitalocean_droplet.web.ipv4_address}
     VPS_IP=${digitalocean_droplet.web.ipv4_address}
   EOT
 }
