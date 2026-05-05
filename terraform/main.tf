@@ -6,6 +6,10 @@ variable "ssh_key" {
   description = "This is SSH key allow terraform access into your droplets"
 }
 
+variable "github_access_token" {
+  type = string
+}
+
 terraform {
   // create bucket to store infrastructure of vps
   backend "s3" {
@@ -57,9 +61,20 @@ resource "local_file" "ansible_inventory" {
     [list_host:vars]
     ansible_user=root
     ansible_private_key_file=./ssh-key-do
-    REACT_APP_API_URL=http://${digitalocean_droplet.web.ipv4_address}:8088/
-    VPS_IP=http://${digitalocean_droplet.web.ipv4_address}:8088/
+    REACT_APP_API_URL=https://api.updatestudentmonash.dev/
+    VPS_IP=${digitalocean_droplet.web.ipv4_address}
   EOT
+}
+
+provider "github" {
+  token = var.github_access_token
+  owner = "Kelvin2k"
+}
+
+resource "github_actions_variable" "vps_host" {
+  repository    = "MovieTheater_Project"
+  variable_name = "VPS_HOST"
+  value         = digitalocean_droplet.web.ipv4_address
 }
 
 output "output_name" {
