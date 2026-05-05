@@ -47,6 +47,7 @@ resource "digitalocean_droplet" "web" {
   ssh_keys = [var.ssh_key]
 }
 
+// automatic configuration on hosts.ini
 resource "local_file" "ansible_inventory" {
   filename = "../ansible/hosts.ini"
   content  = <<-EOT

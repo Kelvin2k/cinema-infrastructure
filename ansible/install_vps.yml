@@ -41,6 +41,16 @@
         src: .env_frontend.j2
         dest: /root/MovieTheater_Project/Cinema-Project-FrontEnd/.env
     
+    - name: Setup 2GB Swap file for building
+      shell: |
+        if [ ! -f /swapfile ]; then
+          fallocate -l 2G /swapfile
+          chmod 600 /swapfile
+          mkswap /swapfile
+          swapon /swapfile
+          echo '/swapfile none swap sw 0 0' >> /etc/fstab
+        fi
+        
     - name: Deploy Project
       shell: |
         docker-compose down
