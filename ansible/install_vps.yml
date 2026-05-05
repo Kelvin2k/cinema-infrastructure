@@ -50,11 +50,11 @@
           swapon /swapfile
           echo '/swapfile none swap sw 0 0' >> /etc/fstab
         fi
-        
+
     - name: Deploy Project
       shell: |
+        docker-compose pull
         docker-compose down
-        docker-compose build
-        docker-compose up -d
+        docker-compose up -d --remove-orphans
       args:
         chdir: /root/MovieTheater_Project
