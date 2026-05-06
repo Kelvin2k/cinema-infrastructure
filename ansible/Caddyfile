@@ -2,6 +2,6 @@ movie-project.updatesstudentmonash.dev {
     reverse_proxy frontend:80
 }
 
-cinema-project-be.updatesstudentmonash.dev {
+movie-project-be.updatesstudentmonash.dev {
     reverse_proxy node:8088
 }
