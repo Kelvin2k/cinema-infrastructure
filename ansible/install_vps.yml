@@ -19,32 +19,25 @@
         path: /usr/local/bin/docker-compose
         mode: '0700'
 
-    - name: clone github repo
-      git:
-        repo: 'https://github.com/Kelvin2k/MovieTheater_Project.git'
-        dest: /root/MovieTheater_Project
-        version: main
-        update: yes
+    - name: Create project directory
+      file:
+        path: /root/MovieTheater_Project
+        state: directory
+        mode: '0755'
 
-    - name: Generate .env file in project folder from template
-      template:
-        src: .env_project.j2
-        dest: /root/MovieTheater_Project/.env
-    
-    - name: Generate .env file in backend folder from template
+    - name: Copy docker-compose file
+      copy:
+        src: docker-compose.yml
+        dest: /root/MovieTheater_Project/docker-compose.yml
+
+    - name: Generate runtime env file
       template:
         src: .env_backend.j2
-        dest: /root/MovieTheater_Project/Cinema-Project-Backend/.env
+        dest: /root/MovieTheater_Project/.env
 
-    - name: Generate .env file in frontend folder from template
-      template:
-        src: .env_frontend.j2
-        dest: /root/MovieTheater_Project/Cinema-Project-FrontEnd/.env
-
-    - name: Deploy Project
-      shell: |
-        docker-compose pull
-        docker-compose down
-        docker-compose up -d --remove-orphans
-      args:
-        chdir: /root/MovieTheater_Project
+    - name: Copy db-init directory
+      copy:
+        src: db-init
+        dest: /root/MovieTheater_Project/
+        mode: '0755'
+        directory_mode: '0755'

@@ -1,0 +1,46 @@
+
+version: "3.8"
+services:
+  frontend:
+    container_name: movie-project-frontend
+    image: kelvin2kk/cinema-frontend:latest
+    restart: always
+    ports:
+      - "3000:80"
+    networks:
+      - cinema-project
+
+  mysql_db:
+    image: mysql:8.0
+    container_name: mysql_db
+    environment:
+      - MYSQL_ROOT_PASSWORD=${DATABASE_PASSWORD}
+      - MYSQL_DATABASE=${DATABASE_NAME}
+    ports:
+      - "3308:3306"
+    volumes:
+      - movie_project_volume:/var/lib/mysql
+      - ./db-init:/docker-entrypoint-initdb.d
+    networks:
+      - cinema-project
+
+  node:
+    depends_on:
+      - mysql_db
+    container_name: movie-project-backend
+    image: kelvin2kk/cinema-backend:latest
+    restart: always
+    env_file:
+      - .env
+    ports:
+      - "8088:8088"
+    networks:
+      - cinema-project
+
+volumes:
+  movie_project_volume:
+
+networks:
+  cinema-project:
+
+  
