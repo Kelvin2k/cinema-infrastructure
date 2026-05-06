@@ -10,7 +10,7 @@ services:
   mysql_db:
     image: mysql:8.0
     container_name: mysql_db
-    environment:
+    env_file:
       - .env
     ports:
       - "3308:3306"

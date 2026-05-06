@@ -46,3 +46,10 @@
       copy:
         src: Caddyfile
         dest: /root/MovieTheater_Project/Caddyfile
+
+    - name: Apply new docker-compose configuration
+      shell: |
+        docker-compose down
+        docker-compose up -d --remove-orphans
+      args:
+        chdir: /root/MovieTheater_Project
