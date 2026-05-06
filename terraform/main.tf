@@ -80,7 +80,7 @@ resource "github_actions_variable" "vps_host" {
 resource "github_actions_secret" "vps_secret_example" {
   repository      = "MovieTheater_Project"
   secret_name     = "REACT_APP_API_URL"
-  plaintext_value = "https://cinema-project-be.updatestudentmonash.dev"
+  plaintext_value = "https://movie-project-be.updatestudentmonash.dev"
 }
 
 output "output_name" {
