@@ -78,6 +78,12 @@ resource "github_actions_variable" "vps_host" {
   value         = digitalocean_droplet.web.ipv4_address
 }
 
+resource "github_actions_secret" "vps_secret_example" {
+  repository      = "MovieTheater_Project"
+  secret_name     = "REACT_APP_API_URL"
+  plaintext_value = "http://${digitalocean_droplet.web.ipv4_address}:8080"
+}
+
 output "output_name" {
   value = {
     ipVps: digitalocean_droplet.web.ipv4_address
