@@ -32,7 +32,7 @@
 
     - name: Generate runtime env file
       template:
-        src: .env_backend.j2
+        src: .env_project.j2
         dest: /root/MovieTheater_Project/.env
 
     - name: Copy db-init directory
@@ -41,3 +41,8 @@
         dest: /root/MovieTheater_Project/
         mode: '0755'
         directory_mode: '0755'
+
+    - name: Copy Caddyfile
+      copy:
+        src: Caddyfile
+        dest: /root/MovieTheater_Project/Caddyfile

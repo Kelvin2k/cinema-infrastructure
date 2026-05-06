@@ -1,12 +1,9 @@
-
 version: "3.8"
 services:
   frontend:
     container_name: movie-project-frontend
     image: kelvin2kk/cinema-frontend:latest
     restart: always
-    ports:
-      - "3000:80"
     networks:
       - cinema-project
 
@@ -14,13 +11,11 @@ services:
     image: mysql:8.0
     container_name: mysql_db
     environment:
-      - MYSQL_ROOT_PASSWORD=${DATABASE_PASSWORD}
-      - MYSQL_DATABASE=${DATABASE_NAME}
+      - .env
     ports:
       - "3308:3306"
     volumes:
       - movie_project_volume:/var/lib/mysql
-      - ./db-init:/docker-entrypoint-initdb.d
     networks:
       - cinema-project
 
@@ -32,15 +27,27 @@ services:
     restart: always
     env_file:
       - .env
+    networks:
+      - cinema-project
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: caddy_proxy
+    restart: always
     ports:
-      - "8088:8088"
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
     networks:
       - cinema-project
 
 volumes:
   movie_project_volume:
+  caddy_data:
+  caddy_config:
 
 networks:
   cinema-project:
-
-  

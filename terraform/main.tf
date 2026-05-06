@@ -67,7 +67,6 @@ resource "local_file" "ansible_inventory" {
     [list_host:vars]
     ansible_user=root
     ansible_private_key_file=./ssh-key-do
-    REACT_APP_API_URL=${digitalocean_droplet.web.ipv4_address}
     VPS_IP=${digitalocean_droplet.web.ipv4_address}
   EOT
 }
@@ -81,7 +80,7 @@ resource "github_actions_variable" "vps_host" {
 resource "github_actions_secret" "vps_secret_example" {
   repository      = "MovieTheater_Project"
   secret_name     = "REACT_APP_API_URL"
-  plaintext_value = "http://${digitalocean_droplet.web.ipv4_address}:8080"
+  plaintext_value = "https://cinema-project-be.updatestudentmonash.dev"
 }
 
 output "output_name" {
