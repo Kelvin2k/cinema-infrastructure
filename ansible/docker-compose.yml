@@ -16,6 +16,7 @@ services:
       - "3308:3306"
     volumes:
       - movie_project_volume:/var/lib/mysql
+      - ./db-init:/docker-entrypoint-initdb.d
     networks:
       - cinema-project
 
