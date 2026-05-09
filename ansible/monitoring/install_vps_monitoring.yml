@@ -31,6 +31,12 @@
         state: directory
         mode: '0755'
 
+    # Copy the static alert rules file to the monitoring directory.
+    - name: Copy alert rules
+      copy:
+        src: ./rules/alert-rules.yml
+        dest: /root/monitoring/rules/alert-rules.yml
+
     # Render the Alertmanager configuration from the Jinja template.
     - name: Generate Alertmanager Config
       template:

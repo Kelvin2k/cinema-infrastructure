@@ -12,6 +12,6 @@ receivers:
     telegram_configs:
       - send_resolved: true
         bot_token: '{{ telegram_token }}'
-        chat_id: '{{ telegram_bot_id }}'
+        chat_id: {{ telegram_bot_id }}
         api_url: 'https://api.telegram.org'
         parse_mode: 'HTML'
