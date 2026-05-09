@@ -1,54 +1,49 @@
 version: "3.8"
+
 services:
-  frontend:
-    container_name: movie-project-frontend
-    image: kelvin2kk/cinema-frontend:latest
-    restart: always
-    networks:
-      - cinema-project
-
-  mysql_db:
-    image: mysql:8.0
-    container_name: mysql_db
-    env_file:
-      - .env
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
     ports:
-      - "3308:3306"
+      - "9090:9090"
     volumes:
-      - movie_project_volume:/var/lib/mysql
-      - ./db-init:/docker-entrypoint-initdb.d
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./rules/alert-rules.yml:/etc/prometheus/alert-rules.yml
+      - prometheus_data:/prometheus
     networks:
-      - cinema-project
+      - monitoring_network
 
-  node:
-    depends_on:
-      - mysql_db
-    container_name: movie-project-backend
-    image: kelvin2kk/cinema-backend:latest
-    restart: always
-    env_file:
-      - .env
-    networks:
-      - cinema-project
-
-  caddy:
-    image: caddy:2-alpine
-    container_name: caddy_proxy
-    restart: always
+  alertmanager:
+    image: prom/alertmanager:latest
+    container_name: alertmanager
     ports:
-      - "80:80"
-      - "443:443"
+      - "9093:9093"
     volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile
-      - caddy_data:/data
-      - caddy_config:/config
+      - ./rules/alertmanager.yml:/etc/alertmanager/alertmanager.yml
+      - alertmanager_data:/alertmanager
     networks:
-      - cinema-project
+      - monitoring_network
+
+  node_exporter:
+    image: prom/node-exporter:latest
+    container_name: node_exporter
+    ports:
+      - "9100:9100"
+    networks:
+      - monitoring_network
+
+  blackbox_exporter:
+    image: prom/blackbox-exporter:latest
+    container_name: blackbox_exporter
+    ports:
+      - "9115:9115"
+    networks:
+      - monitoring_network
 
 volumes:
-  movie_project_volume:
-  caddy_data:
-  caddy_config:
+  prometheus_data:
+  alertmanager_data:
 
 networks:
-  cinema-project:
+  monitoring_network:
+    external: true
