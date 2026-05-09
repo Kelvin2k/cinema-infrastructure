@@ -5,3 +5,4 @@ ssh-key-do
 .terraform/
 hosts.ini
 .vault_pass
+ansible/monitoring/rules/secrets.yml

@@ -1,0 +1,19 @@
+groups:
+  # - name: test-alerts
+  #   rules:
+  #     - alert: AlwaysFiringTest
+  #       expr: vector(1)
+  #       for: 5s
+  #       annotations:
+  #         summary: "Test Alert"
+  #         description: "Warning test from Prometheus!"
+
+  - name: ram-alerts
+    rules:
+      - alert: HighRAMUsage
+        expr: (100 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes * 100) > 50
+        for: 5s
+        annotations:
+          summary: "RAM usage high"
+          description: "RAM > 50% in 5s"
+

@@ -1,0 +1,17 @@
+global:
+  telegram_api_url: 'https://api.telegram.org'
+
+route:
+  receiver: 'telegram_alert'
+  group_wait: 10s
+  group_interval: 1m
+  repeat_interval: 1h
+
+receivers:
+  - name: 'telegram_alert'
+    telegram_configs:
+      - send_resolved: true
+        bot_token: '{{ telegram_token }}'
+        chat_id: '{{ telegram_bot_id }}'
+        api_url: 'https://api.telegram.org'
+        parse_mode: 'HTML'

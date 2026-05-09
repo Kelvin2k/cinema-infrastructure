@@ -1,0 +1,60 @@
+- name: Install VPS Monitoring
+  hosts: list_host
+  become: true
+  vars_files:
+    - ./rules/secrets.yml
+  tasks:
+    # Install Docker, which is required to run the monitoring containers.
+    - name: setup docker
+      apt:
+        name: docker.io
+        state: present
+
+    # Download the Docker Compose binary directly from the official release.
+    - name: setup docker-compose
+      shell: curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+      args:
+        creates: /usr/local/bin/docker-compose
+
+    # Make docker-compose executable on the target host.
+    - name: Grant permissive execution to docker-compose
+      file:
+        path: /usr/local/bin/docker-compose
+        mode: '0700'
+
+    # Create the Docker network used by the monitoring stack.
+    - name: Create network
+      shell: docker network inspect monitoring_network || docker network create monitoring_network
+
+    # Prepare the directory structure for generated monitoring files.
+    - name: Create rules folder
+      file:
+        path: /root/monitoring/rules
+        state: directory
+        mode: '0755'
+
+    # Render the Alertmanager configuration from the Jinja template.
+    - name: Generate Alertmanager Config
+      template:
+        src: ./rules/alertmanager.yml.j2
+        dest: /root/monitoring/rules/alertmanager.yml 
+
+    # Render the Prometheus configuration with the target VPS IP.
+    - name: Generate Prometheus Config
+      template:
+        src: ./prometheus.yml.j2
+        dest: /root/monitoring/prometheus.yml
+
+    # Copy the Docker Compose file to the remote monitoring directory.
+    - name: Copy docker-compose file
+      copy:
+        src: docker-compose.yml
+        dest: /root/monitoring/docker-compose.yml
+
+    # Restart the monitoring stack with the updated configuration.
+    - name: Apply new docker-compose configuration
+      shell: |
+        docker-compose down
+        docker-compose up -d --remove-orphans
+      args:
+        chdir: /root/monitoring
