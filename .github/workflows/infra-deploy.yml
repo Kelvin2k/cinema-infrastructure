@@ -64,5 +64,4 @@ jobs:
         working-directory: ./ansible
         run: |
           ansible-playbook -i hosts-monitoring.ini monitoring/install_vps_monitoring.yml \
-            --vault-password-file vault_pass.txt \
-            --extra-vars "project_vps_ip=${{ env.PROJECT_VPS_IP }}"
+            --extra-vars "project_vps_ip=${{ env.PROJECT_VPS_IP }} telegram_token=${{ secrets.TELEGRAM_TOKEN }} telegram_bot_id=${{ secrets.TELEGRAM_BOT_ID }}"

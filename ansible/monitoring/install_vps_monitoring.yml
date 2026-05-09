@@ -1,8 +1,6 @@
 - name: Install VPS Monitoring
   hosts: list_host
   become: true
-  vars_files:
-    - ./rules/secrets.yml
   tasks:
     # Install Docker, which is required to run the monitoring containers.
     - name: setup docker
