@@ -6,10 +6,9 @@ on:
       - main
 
 jobs:
-  # Deploy the infrastructure and main application.
-  deployProjectVPS:
+  deploy_all:
     runs-on: ubuntu-latest
-
+    
     env:
       TF_VAR_do_token: ${{ secrets.DO_TOKEN }}
       TF_VAR_ssh_key: ${{ secrets.SSH_KEY_ID }}
@@ -17,17 +16,14 @@ jobs:
       ANSIBLE_HOST_KEY_CHECKING: "False"
 
     steps:
-      # Pull the repository code before running any deployment steps.
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      # Install the Terraform CLI used for provisioning.
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: 1.14.8
 
-      # Initialize Terraform and apply the infrastructure changes.
       - name: Terraform Init and Apply
         working-directory: ./terraform
         env:
@@ -37,89 +33,33 @@ jobs:
           terraform init
           terraform apply -auto-approve
 
-      # Install Ansible for the application deployment playbook.
       - name: Setup Ansible
         run: |
           sudo apt-get update
           sudo apt-get install -y ansible
 
-      # Write the SSH private key so Ansible can connect to the server.
-      - name: Create SSH Key File
+      - name: Create SSH Key and Vault Password
         working-directory: ./ansible
         run: |
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > ssh-key-do
           chmod 600 ssh-key-do
+          echo "${{ secrets.VAULT_PASSWORD }}" > vault_pass.txt
 
-      # Create the Vault password file used by Ansible to decrypt secrets.
-      - name: Create Vault Password File
+      - name: Run Ansible Playbook For Project
         working-directory: ./ansible
         run: |
-          echo "${{ secrets.VAULT_PASSWORD }}" > .vault_pass
-
-      # Run the playbook that installs and configures the main VPS.
-      - name: Run Ansible Playbook For Deployment
-        working-directory: ./ansible
-        run: |
-          ansible-playbook -i hosts.ini install_vps.yml --vault-password-file .vault_pass
-
-  # Deploy the monitoring stack after the main infrastructure is ready.
-  setupMonitoring:
-    needs: deployProjectVPS
-    runs-on: ubuntu-latest
-    env:
-      TF_VAR_do_token: ${{ secrets.DO_TOKEN }}
-      TF_VAR_ssh_key: ${{ secrets.SSH_KEY_ID }}
-      TF_VAR_github_access_token: ${{ secrets.GH_ACCESS_TOKEN }}
-      ANSIBLE_HOST_KEY_CHECKING: "False"
-    steps:
-      # Pull the repository code again for the monitoring job.
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
-      # Install the Terraform CLI used to read the outputs.
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: 1.14.8
-
-      # Initialize Terraform before reading the stored outputs.
-      - name: Terraform Init
-        working-directory: ./terraform
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.SPACES_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.SPACES_SECRET_ACCESS_KEY }}
-        run: terraform init
-
-      # Read the VPS IP and expose it to later steps in this job.
-      - name: get Project VPS IP
+          ansible-playbook -i hosts.ini install_vps.yml --vault-password-file vault_pass.txt
+          
+      - name: Get Project VPS IP
         id: get_ip
         working-directory: ./terraform
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.SPACES_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.SPACES_SECRET_ACCESS_KEY }}
         run: |
           PROJECT_IP=$(terraform output -raw project_vps_ip)
           echo "PROJECT_VPS_IP=$PROJECT_IP" >> $GITHUB_ENV
 
-      # Install Ansible to run the monitoring playbook.
-      - name: Setup Ansible
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y ansible
-
-      # Write the SSH private key so Ansible can connect to the monitoring host.
-      - name: Create SSH Key File
-        working-directory: ./ansible
-        run: |
-          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ssh-key-do
-          chmod 600 ssh-key-do
-
-      # Deploy the monitoring stack with the target VPS IP passed in.
       - name: Run Ansible Playbook For Monitoring
         working-directory: ./ansible
         run: |
-          echo "${{ secrets.VAULT_PASSWORD }}" > vault_pass.txt
           ansible-playbook -i hosts-monitoring.ini monitoring/install_vps_monitoring.yml \
             --vault-password-file vault_pass.txt \
             --extra-vars "project_vps_ip=${{ env.PROJECT_VPS_IP }}"
-          rm vault_pass.txt
