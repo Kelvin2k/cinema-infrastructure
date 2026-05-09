@@ -81,7 +81,7 @@ resource "local_file" "ansible_inventory" {
 # Monitoring VPS used for observability services.
 resource "digitalocean_droplet" "monitoring" {
   image    = "ubuntu-24-04-x64"
-  name     = "movie-project-vps"
+  name     = "movie-monitoring-vps"
   region   = "syd1"
   size     = "s-1vcpu-2gb"
   ssh_keys = [var.ssh_key]
