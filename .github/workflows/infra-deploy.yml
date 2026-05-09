@@ -7,7 +7,7 @@ on:
 
 jobs:
   # Deploy the infrastructure and main application.
-  deploy:
+  deployProjectVPS:
     runs-on: ubuntu-latest
 
     env:
@@ -64,7 +64,7 @@ jobs:
 
   # Deploy the monitoring stack after the main infrastructure is ready.
   setupMonitoring:
-    needs: deploy
+    needs: deployProjectVPS
     runs-on: ubuntu-latest
     env:
       TF_VAR_do_token: ${{ secrets.DO_TOKEN }}
@@ -121,5 +121,5 @@ jobs:
           echo "${{ secrets.VAULT_PASSWORD }}" > vault_pass.txt
           ansible-playbook -i hosts-monitoring.ini monitoring/install_vps_monitoring.yml \
             --vault-password-file vault_pass.txt \
-            --extra-vars "project_vps_ip=$PROJECT_IP"
+            --extra-vars "project_vps_ip=${{ env.PROJECT_VPS_IP }}"
           rm vault_pass.txt
