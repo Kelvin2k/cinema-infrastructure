@@ -114,12 +114,12 @@ resource "github_actions_secret" "api_url_secret" {
 }
 
 # Useful outputs for other automation layers or manual inspection.
-output "project_vps" {
+output "project_vps_ip" {
   value = {
     ipVps: digitalocean_droplet.web.ipv4_address
   }
 }
 
-output "monitoring_vps" {
+output "monitoring_vps_ip" {
   value = digitalocean_droplet.monitoring.ipv4_address
 }
