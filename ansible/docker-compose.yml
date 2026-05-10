@@ -31,6 +31,27 @@ services:
     networks:
       - cinema-project
 
+  # Node Exporter - Exports system metrics (CPU, memory, disk, network) from Linux hosts
+  node_exporter:
+    image: prom/node-exporter:latest
+    container_name: node_exporter
+    restart: always
+    pid: host
+    network_mode: host
+    volumes:
+      - "/:/host:ro,rslave"
+    command:
+      - '--path.rootfs=/host'
+
+  # Blackbox Exporter - Probes endpoints and exports metrics for endpoint availability and response times
+  blackbox_exporter:
+    image: prom/blackbox-exporter:latest
+    container_name: blackbox_exporter
+    ports:
+      - "9115:9115"  # Metrics export port
+    networks:
+      - cinema-project
+
   caddy:
     image: caddy:2-alpine
     container_name: caddy_proxy

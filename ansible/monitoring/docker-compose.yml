@@ -45,24 +45,6 @@ services:
     networks:
       - monitoring_network
 
-  # Node Exporter - Exports system metrics (CPU, memory, disk, network) from Linux hosts
-  node_exporter:
-    image: prom/node-exporter:latest
-    container_name: node_exporter
-    ports:
-      - "9100:9100"  # Metrics export port
-    networks:
-      - monitoring_network
-
-  # Blackbox Exporter - Probes endpoints and exports metrics for endpoint availability and response times
-  blackbox_exporter:
-    image: prom/blackbox-exporter:latest
-    container_name: blackbox_exporter
-    ports:
-      - "9115:9115"  # Metrics export port
-    networks:
-      - monitoring_network
-
 # Persistent data volumes for storing container data
 volumes:
   prometheus_data:  # Stores Prometheus time-series metrics
