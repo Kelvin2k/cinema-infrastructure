@@ -2,24 +2,26 @@ scrape_configs:
   - job_name: 'node_exporter'
     static_configs:
       - targets: ['{{ project_vps_ip }}:9100']
+{# 
   - job_name: 'database_exporter'
     static_configs:
-      - targets: ['{{ project_vps_ip }}:9104']
+      - targets: ['{{ project_vps_ip }}:9104'] #}
+
   - job_name: 'blackbox_http_probe'
     metrics_path: /probe
     params:
       module: [http_2xx]
     static_configs:
       - targets:
-        - http://{{ project_vps_ip }}:3000  
-        - http://{{ project_vps_ip }}:8088 
+        - http://movie-project-frontend:3000 
+        - http://movie-project-backend:8088
     relabel_configs:
       - source_labels: [__address__]
         target_label: __param_target
       - source_labels: [__param_target]
         target_label: instance
       - target_label: __address__
-        replacement: blackbox_exporter:9115
+        replacement: '{{ project_vps_ip }}:9115'
 
 rule_files:
   - "/etc/prometheus/alert-rules.yml"
