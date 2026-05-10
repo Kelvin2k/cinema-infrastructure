@@ -4,37 +4,44 @@
   vars_files:
     - secrets.yml
   tasks:
+    # Install the base packages needed for containerized deployment.
     - name: setup docker
       apt:
         name: docker.io
         state: present
 
+    # Download Docker Compose if it is not already installed.
     - name: setup docker-compose
       shell: curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
       args:
         creates: /usr/local/bin/docker-compose
 
+    # Make the Docker Compose binary executable.
     - name: Grant permissive execution to docker-compose
       file:
         path: /usr/local/bin/docker-compose
         mode: '0700'
 
+    # Create the application directory that will hold the compose stack.
     - name: Create project directory
       file:
         path: /root/MovieTheater_Project
         state: directory
         mode: '0755'
 
+    # Copy the Docker Compose file that defines the application stack.
     - name: Copy docker-compose file
       copy:
         src: docker-compose.yml
         dest: /root/MovieTheater_Project/docker-compose.yml
 
+    # Render the runtime environment file with secret values.
     - name: Generate runtime env file
       template:
         src: .env_project.j2
         dest: /root/MovieTheater_Project/.env
 
+    # Copy database initialization scripts into the project directory.
     - name: Copy db-init directory
       copy:
         src: db-init
@@ -42,11 +49,13 @@
         mode: '0755'
         directory_mode: '0755'
 
+    # Copy the Caddy reverse proxy configuration used by the stack.
     - name: Copy Caddyfile
       copy:
         src: Caddyfile
         dest: /root/MovieTheater_Project/Caddyfile
 
+    # Restart the application stack with the new configuration.
     - name: Apply new docker-compose configuration
       shell: |
         docker-compose down
