@@ -13,7 +13,7 @@ scrape_configs:
       module: [http_2xx]
     static_configs:
       - targets:
-        - http://movie-project-frontend:3000 
+        - http://movie-project-frontend:80 
         - http://movie-project-backend:8088
     relabel_configs:
       - source_labels: [__address__]
