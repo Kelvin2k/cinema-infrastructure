@@ -1,37 +1,133 @@
 # Cinema Infrastructure
 
-Infrastructure-as-code for deploying the Cinema (Movie Theater) project on a DigitalOcean VPS. Terraform provisions the droplet and generates the Ansible inventory, while Ansible installs Docker, pulls the application repo, renders environment files, and deploys with Docker Compose.
+This repository provides infrastructure-as-code and automation for deploying the Cinema (Movie Theater) application on DigitalOcean. It provisions two VPS instances, configures Docker, deploys the app stack behind a Caddy reverse proxy, and runs a separate monitoring stack with Prometheus, Alertmanager, and Grafana.
 
-## What This Repo Does
+## Purpose and Scope
 
-- Provision a DigitalOcean droplet with Terraform
-- Write an Ansible inventory pointing to the new VPS
-- Install Docker and Docker Compose on the VPS
-- Clone the application repo and render .env files
-- Build and run the app with Docker Compose
+- Provision and manage the application VPS and the monitoring VPS on DigitalOcean.
+- Generate Ansible inventories from Terraform outputs.
+- Install Docker and Docker Compose, then deploy the app and monitoring stacks.
+- Render environment files and monitoring configs from templates.
+- Configure reverse proxy routing and TLS via Caddy.
+- Enable metrics scraping, blackbox probing, and Telegram alerting.
 
-## Tech Stack
+## High-Level Architecture
 
-- Terraform (DigitalOcean + local provider)
-- Ansible
-- Docker + Docker Compose
-- DigitalOcean Spaces for Terraform state backend
+Terraform provisions resources and writes inventories, then Ansible configures hosts and deploys Docker Compose stacks.
 
-## Repository Structure
+```
+Terraform
+	-> DigitalOcean droplets (app + monitoring)
+	-> Writes Ansible inventory for the app VPS
 
-- terraform/ - Terraform configuration for droplet + inventory file
-- ansible/ - Ansible playbook and env templates
+Ansible
+	-> Installs Docker + Docker Compose
+	-> Copies compose files and templates
+	-> Renders .env and monitoring configs
+	-> Runs docker-compose to bring up services
+```
 
-## Prerequisites
+## Components and Services
 
-- Terraform
-- Ansible
-- A DigitalOcean account and API token
-- An SSH key added to your DigitalOcean account
+### Application VPS (movie-project-vps)
 
-## Usage
+Deployed by [ansible/docker-compose.yml](ansible/docker-compose.yml). Services include:
 
-1. Configure Terraform variables in terraform/terraform.tfvars.
+- Frontend container (`kelvin2kk/cinema-frontend:latest`) behind Caddy.
+- Backend container (`kelvin2kk/cinema-backend:latest`) behind Caddy.
+- MySQL 8.0 database with persistent storage and init scripts.
+- Node Exporter on the host network for system metrics.
+- Blackbox Exporter for HTTP probes of the frontend and backend.
+- Caddy reverse proxy with HTTP and HTTPS entrypoints.
+
+Key notes:
+
+- Frontend and backend are not exposed directly; Caddy handles external traffic.
+- MySQL is exposed on host port 3308 and persists data in a Docker volume.
+- Node Exporter runs with host PID and host network for accurate metrics.
+
+### Monitoring VPS (movie-monitoring-vps)
+
+Deployed by [ansible/monitoring/docker-compose.yml](ansible/monitoring/docker-compose.yml). Services include:
+
+- Prometheus for scraping metrics and evaluating alert rules.
+- Alertmanager for routing alerts (Telegram in this configuration).
+- Grafana for dashboards and visualization.
+
+Prometheus configuration is rendered from [ansible/monitoring/prometheus.yml.j2](ansible/monitoring/prometheus.yml.j2) and targets:
+
+- Node Exporter on the application VPS (`project_vps_ip:9100`).
+- Blackbox Exporter on the application VPS (`project_vps_ip:9115`) to probe frontend/backend endpoints.
+
+Alert rules and alert routing:
+
+- Rules live in [ansible/monitoring/rules/alert-rules.yml](ansible/monitoring/rules/alert-rules.yml).
+- Alertmanager config is rendered from [ansible/monitoring/rules/alertmanager.yml.j2](ansible/monitoring/rules/alertmanager.yml.j2).
+
+## Repository Layout (Key Files)
+
+- [ansible/install_vps.yml](ansible/install_vps.yml): Installs Docker and deploys the application stack.
+- [ansible/monitoring/install_vps_monitoring.yml](ansible/monitoring/install_vps_monitoring.yml): Installs Docker and deploys the monitoring stack.
+- [ansible/docker-compose.yml](ansible/docker-compose.yml): Application stack definition.
+- [ansible/monitoring/docker-compose.yml](ansible/monitoring/docker-compose.yml): Monitoring stack definition.
+- [ansible/Caddyfile](ansible/Caddyfile): Reverse proxy routing for frontend and backend.
+- [ansible/db-init/Banner.sql](ansible/db-init/Banner.sql): Database initialization scripts.
+- [ansible/.env_project.j2](ansible/.env_project.j2): App runtime environment template.
+- [ansible/.env_backend.j2](ansible/.env_backend.j2): Backend template for application runtime values.
+- [ansible/.env_frontend.j2](ansible/.env_frontend.j2): Frontend template for client-side variables.
+- [ansible/hosts.ini](ansible/hosts.ini): Inventory generated by Terraform for the app VPS.
+- [terraform/main.tf](terraform/main.tf): Infrastructure, outputs, and GitHub Actions variables/secrets.
+- [terraform/terraform.tfvars](terraform/terraform.tfvars): Terraform inputs (tokens and SSH key ID).
+- [ansible/monitoring/README.md](ansible/monitoring/README.md): Monitoring stack usage notes.
+- [.github/workflows/infra-deploy.yml](.github/workflows/infra-deploy.yml): CI workflow for full infra and app deployment.
+
+## Configuration and Secrets
+
+### Terraform Inputs
+
+Terraform inputs are defined in [terraform/terraform.tfvars](terraform/terraform.tfvars):
+
+- `do_token`: DigitalOcean API token.
+- `ssh_key`: DigitalOcean SSH key fingerprint or ID.
+- `github_access_token`: Token used by the GitHub provider.
+
+Keep this file private. It contains secrets required to provision infrastructure.
+
+### Ansible Vault
+
+Secrets consumed by the Ansible playbooks are stored in [ansible/secrets.yml](ansible/secrets.yml) and are expected to be managed with Ansible Vault. The playbooks load this file to render the environment templates.
+
+### Application Environment Templates
+
+The app stack uses templates rendered on the VPS:
+
+- [ansible/.env_project.j2](ansible/.env_project.j2)
+- [ansible/.env_backend.j2](ansible/.env_backend.j2)
+- [ansible/.env_frontend.j2](ansible/.env_frontend.j2)
+
+These templates reference variables from Ansible Vault and Terraform outputs (such as the VPS IP). Ensure all required variables exist before running the playbooks.
+
+### GitHub Actions Secrets and Variables
+
+The workflow in [.github/workflows/infra-deploy.yml](.github/workflows/infra-deploy.yml) expects these secrets:
+
+- `DO_TOKEN`
+- `SSH_KEY_ID`
+- `GH_ACCESS_TOKEN`
+- `SPACES_ACCESS_KEY_ID`
+- `SPACES_SECRET_ACCESS_KEY`
+- `SSH_PRIVATE_KEY`
+- `VAULT_PASSWORD`
+- `TELEGRAM_TOKEN`
+- `TELEGRAM_BOT_ID`
+
+It also uses Terraform outputs to set GitHub Actions variables and secrets for the application repository.
+
+## Deployment Workflow
+
+### Manual Provisioning (Local)
+
+1. Populate [terraform/terraform.tfvars](terraform/terraform.tfvars) with valid credentials and IDs.
 2. Initialize and apply Terraform:
 
 ```sh
@@ -40,21 +136,76 @@ terraform init
 terraform apply
 ```
 
-3. Create or edit the Ansible secrets file:
+3. Create or update Ansible Vault secrets:
 
 ```sh
 cd ../ansible
 ansible-vault create secrets.yml
 ```
 
-4. Run the Ansible playbook:
+4. Deploy the application stack:
 
 ```sh
 ansible-playbook -i hosts.ini install_vps.yml
 ```
 
-## Notes
+5. Deploy the monitoring stack (use the app VPS IP for blackbox and node exporter targets):
 
-- The Ansible inventory is generated at ansible/hosts.ini by Terraform.
-- Ensure ansible/ssh-key-do matches the private key used by DigitalOcean.
-- Environment templates live in ansible/.env\_\*.j2 and are rendered on the VPS.
+```sh
+ansible-playbook -i hosts-monitoring.ini monitoring/install_vps_monitoring.yml \
+	--extra-vars "project_vps_ip=<APP_VPS_IP> telegram_token=<TOKEN> telegram_bot_id=<CHAT_ID>"
+```
+
+Notes:
+
+- Terraform uses a DigitalOcean Spaces backend configured in [terraform/main.tf](terraform/main.tf). Provide the Spaces credentials via `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` when running Terraform.
+- The Ansible inventory for the app VPS is written to [ansible/hosts.ini](ansible/hosts.ini) by Terraform.
+- A monitoring inventory file is also generated by Terraform in the ansible directory for the monitoring VPS.
+
+### Automated Deployment (GitHub Actions)
+
+On every push to `main`, [.github/workflows/infra-deploy.yml](.github/workflows/infra-deploy.yml) will:
+
+1. Run Terraform to provision or update infrastructure.
+2. Install Ansible on the runner.
+3. Write the SSH private key and Ansible Vault password.
+4. Run the application playbook.
+5. Read the app VPS IP from Terraform outputs.
+6. Run the monitoring playbook with Telegram settings.
+
+## Ports and Endpoints
+
+### Application VPS
+
+- `80` / `443`: Caddy reverse proxy for public traffic.
+- `3308`: MySQL exposed on the host (mapped to container `3306`).
+- `9100`: Node Exporter metrics endpoint (host network).
+- `9115`: Blackbox Exporter probe endpoint.
+
+### Monitoring VPS
+
+- `9090`: Prometheus UI and API.
+- `9093`: Alertmanager UI and API.
+- `3000`: Grafana UI.
+
+Domain routing is configured in [ansible/Caddyfile](ansible/Caddyfile).
+
+## Monitoring and Alerting
+
+- Prometheus scrapes Node Exporter and Blackbox Exporter targets defined in [ansible/monitoring/prometheus.yml.j2](ansible/monitoring/prometheus.yml.j2).
+- Alert rules in [ansible/monitoring/rules/alert-rules.yml](ansible/monitoring/rules/alert-rules.yml) include a high-RAM usage alert.
+- Alertmanager routes notifications to Telegram using variables passed to the monitoring playbook.
+
+## Common Maintenance Tasks
+
+- Update container versions by editing image tags in [ansible/docker-compose.yml](ansible/docker-compose.yml).
+- Change domains or routing rules in [ansible/Caddyfile](ansible/Caddyfile).
+- Add or modify Prometheus alert rules in [ansible/monitoring/rules/alert-rules.yml](ansible/monitoring/rules/alert-rules.yml).
+- Adjust Prometheus scrape targets or modules in [ansible/monitoring/prometheus.yml.j2](ansible/monitoring/prometheus.yml.j2).
+
+## Security and Operational Notes
+
+- Treat [terraform/terraform.tfvars](terraform/terraform.tfvars) and [ansible/secrets.yml](ansible/secrets.yml) as sensitive.
+- Rotate tokens and SSH keys if any credentials are exposed.
+- Ensure the SSH private key in [ansible/ssh-key-do](ansible/ssh-key-do) matches the public key registered with DigitalOcean.
+- Validate firewall rules on each VPS to restrict access to internal ports when appropriate.
